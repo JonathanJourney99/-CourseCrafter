@@ -201,7 +201,11 @@ def create_chatbot():
     st.sidebar.link_button(label="Chat-with-PDF", url='https://chat-doc-with-your-doc.streamlit.app/')
 
 def main():
-    st.title("🚀 Learn Anything : CourseCrafter!!")
+    st.set_page_config(
+        page_title='CourseCrafter',
+        page_icon='🚀'
+    )
+    st.title("🚀 Learn Anything : -CourseCrafter!!")
     
     # Create columns for main content and chatbot
     col1, col2 = st.columns([3, 1])
