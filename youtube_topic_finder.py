@@ -34,8 +34,9 @@ def refine_search_query(original_query: str, model) -> str:
 
     try:
         prompt = f"""
-        Given the user's learning request: '{original_query}'
-        
+        Given the user's learning request and also rectify it : '{original_query}'
+        ###Also make sure to 
+         - If the user input contains a typo, misspelling, or a term that seems contextually inaccurate, attempt to infer and correct it based on the surrounding context.
         Please transform this into a precise, concise YouTube search query that:
         - Focuses on high-quality, beginner-friendly content
         - Extracts the core learning topic
@@ -63,15 +64,15 @@ def generate_topic_insight(topic: str, model) -> str:
 
     try:
         prompt = f"""
-        For the topic '{topic}', provide a comprehensive beginner's guide that includes:
+        As an AI Tutor guide the Customer or User based on the topic: '{topic}', provide a comprehensive beginner's guide that includes:
         
-        1. What is this topic about?
+        1. What is this topic about and what will be the benifits of learning them?
         2. Why is it important to learn?
         3. Key learning milestones for beginners
         4. Recommended learning path and resources
         5. Practical tips for getting started
         
-        Write in a motivational, clear, and encouraging tone.
+        Write in a motivational, clear, and encouraging tone. Also keep it short and sweet
         """
         
         response = model.generate_content(prompt)
