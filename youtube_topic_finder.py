@@ -2,6 +2,7 @@ import streamlit as st
 import os
 import googleapiclient.discovery
 import google.generativeai as genai
+import time
 from typing import List, Dict
 
 from dotenv import load_dotenv
@@ -86,8 +87,8 @@ def search_youtube_content(youtube_service, query: str, content_type: str = 'vid
             type=content_type,
             part='id,snippet',
             maxResults=max_results,
-            order='relevance',  # Most relevant results
-            safeSearch='strict'  # Ensure educational content
+            order='relevance',  
+            safeSearch='strict' 
         ).execute()
         
         results = []
@@ -95,6 +96,8 @@ def search_youtube_content(youtube_service, query: str, content_type: str = 'vid
             # Direct link to video or playlist
             if content_type == 'video':
                 link = f"https://www.youtube.com/watch?v={item['id']['videoId']}"
+                # function to get transcript
+
             else:
                 link = f"https://www.youtube.com/playlist?list={item['id']['playlistId']}"
             
@@ -129,10 +132,10 @@ def display_results(results: List[Dict], topic_insight: str = None):
         col1, col2 = st.columns([1, 3])
         
         with col1:
-              st.image(result['thumbnail'], use_column_width=True)
+              st.image(result['thumbnail'], use_container_width=True)
         with col2:
             # Highlight the video title with a link
-            st.markdown(f"### [{result['title']}]({result['link']})")
+            st.markdown(f"### [{result['title']}]")
             
             # Show channel name
             st.caption(f"Channel: {result['channel']}")
@@ -146,62 +149,118 @@ def display_results(results: List[Dict], topic_insight: str = None):
         
         st.markdown("---")
 
-def main():
+    
+def get_gemini_model(model_name):
+    """
+    Initialize Gemini model based on selected model name
+    """
+    try:
+        gemini_api_key = os.getenv('GEMINI_API_KEY')
+        if not gemini_api_key:
+            st.error("Gemini API Key not found. Please set the GEMINI_API_KEY environment variable.")
+            return None
+    
+        genai.configure(api_key=gemini_api_key)
+        return genai.GenerativeModel(model_name)
+    except Exception as e:
+        st.error(f"Error initializing model {model_name}: {e}")
+        return None
 
+def stream_gemini_response(model, prompt):
+    """
+    Generator function for smooth streaming of Gemini responses
+    """
+    try:
+        # Use streaming generation
+        response_stream = model.generate_content(prompt, stream=True)
+        
+        # Accumulate and yield partial responses
+        accumulated_response = ""
+        for chunk in response_stream:
+            # Add chunk text to accumulated response
+            accumulated_response += chunk.text
+            
+            # Yield accumulated response for smooth display
+            yield accumulated_response
+    
+    except Exception as e:
+        yield f"Error generating response: {e}"
+
+
+def create_chatbot():
+    """
+    Create a Streamlit chatbot interface with model selection and smooth streaming
+    """
+    # Initialize chat history if not exists
+    if 'messages' not in st.session_state:
+        st.session_state.messages = []
+    
+    # Chatbot container
+    st.sidebar.header("🤖 AI Learning Companion Overwhelmed by endless text? Let’s tackle it together, one chat at a time!")
+    st.sidebar.link_button(label="Chat-with-PDF", url='https://chat-doc-with-your-doc.streamlit.app/')
+
+def main():
     st.title("🚀 Learn Anything : CourseCrafter!!")
     
-    # Sidebar configuration
-    st.sidebar.header("🔍 Search Settings")
-    content_type = st.sidebar.selectbox(
-        "Resource Type", 
-        ["Videos", "Playlists"], 
-        help="Choose between individual tutorial videos or complete courses"
-    )
-    max_results = st.sidebar.slider(
-        "Number of Resources", 
-        min_value=5, 
-        max_value=25, 
-        value=10, 
-        help="Select how many learning resources to display"
-    )
+    # Create columns for main content and chatbot
+    col1, col2 = st.columns([3, 1])
     
-    # Learning topic input
-    topic = st.text_input("📚 What do you want to learn today?", 
-                          placeholder="e.g., 'I want to learn Python programming from scratch'")
-    
-    # Search button
-    if st.button("🔍 Find Best Learning Resources"):
-        # Validate input
-        if not topic:
-            st.warning("Please describe the topic you want to learn.")
-            return
-        
-        # Initialize services
-        youtube_service = get_youtube_service()
-        gemini_model = get_gemini_service()
-        
-        if not youtube_service or not gemini_model:
-            return
-        
-        # Refine search query
-        with st.spinner("🧠 Optimizing your learning search..."):
-            refined_query = refine_search_query(topic, gemini_model)
-        
-        # Generate topic insight
-        with st.spinner("✨ Generating learning insights..."):
-            topic_insight = generate_topic_insight(topic, gemini_model)
-        
-        # Perform search
-        st.write(f"🔎 Searching for top {content_type.lower()} about: {refined_query}")
-        results = search_youtube_content(
-            youtube_service, 
-            refined_query, 
-            content_type='video' if content_type == 'Videos' else 'playlist',
-            max_results=max_results
+    with col1:
+        # Sidebar configuration
+        st.sidebar.header("🔍 Search Settings")
+        content_type = st.sidebar.selectbox(
+            "Resource Type", 
+            ["Videos", "Playlists"], 
+            help="Choose between individual tutorial videos or complete courses"
+        )
+        max_results = st.sidebar.slider(
+            "Number of Resources", 
+            min_value=5, 
+            max_value=25, 
+            value=10, 
+            help="Select how many learning resources to display"
         )
         
-        # Display results with topic insight
-        display_results(results, topic_insight)
+        # Learning topic input
+        topic = st.text_input("📚 What do you want to learn today?", 
+                              placeholder="e.g., 'I want to learn Python programming from scratch'")
+        
+        # Search button
+        if st.button("🔍 Find Best Learning Resources"):
+            # Validate input
+            if not topic:
+                st.warning("Please describe the topic you want to learn.")
+                return
+            
+            # Initialize services
+            youtube_service = get_youtube_service()
+            gemini_model = get_gemini_service()
+            
+            if not youtube_service or not gemini_model:
+                return
+            
+            # Refine search query
+            with st.spinner("🧠 Optimizing your learning search..."):
+                refined_query = refine_search_query(topic, gemini_model)
+            
+            # Generate topic insight
+            with st.spinner("✨ Generating learning insights..."):
+                topic_insight = generate_topic_insight(topic, gemini_model)
+            
+            # Perform search
+            st.write(f"🔎 Searching for top {content_type.lower()} about: {refined_query}")
+            results = search_youtube_content(
+                youtube_service, 
+                refined_query, 
+                content_type='video' if content_type == 'Videos' else 'playlist',
+                max_results=max_results
+            )
+            
+            # Display results with topic insight
+            display_results(results, topic_insight)
+
+    with col2:
+        create_chatbot()
 
     # Sidebar additional information
     st.sidebar.markdown("""

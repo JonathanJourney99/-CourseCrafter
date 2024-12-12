@@ -2,3 +2,13 @@ streamlit
 google-api-python-client
 google-generativeai
 python-dotenv
+yt-dlp==2021.3.7
+streamlit
+python-dotenv
+PyPDF2
+langchain
+docx2txt
+streamlit-lottie
+langchain-google-genai
+faiss-cpu
+langchain-community
