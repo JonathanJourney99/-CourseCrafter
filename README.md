@@ -77,8 +77,5 @@ streamlit run youtube_topic_finder.py
 ## Contributing
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## License
-[Specify your license here, e.g., MIT]
-
 ## Disclaimer
 CourseCrafter is an educational tool and relies on third-party APIs. Resource quality may vary.
